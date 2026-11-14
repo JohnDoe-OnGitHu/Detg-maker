@@ -1,75 +1,99 @@
-name: Build Android APK
-
-on:
-  workflow_dispatch:
-  push:
-    paths:
-      - 'detg-android-project.zip'
-      - '.github/workflows/build-apk.yml'
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
+  windows-exe:
+    runs-on: windows-latest
 
     steps:
-      - name: Download project repository
+      - name: Download project
         uses: actions/checkout@v4
 
-      - name: Unpack Android project
-        run: |
-          unzip -q detg-android-project.zip -d project
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
-      - name: Fix JVM compatibility and app name
+      - name: Extract HTML
+        shell: pwsh
         run: |
-          cat > project/DETG-Android-Cloud-Build/app/build.gradle <<'EOF'
-          plugins {
-              id 'com.android.application'
-              id 'org.jetbrains.kotlin.android'
+          Expand-Archive -LiteralPath detg-android-project.zip -DestinationPath project
+          New-Item -ItemType Directory -Force desktop-app
+          Copy-Item project/DETG-Android-Cloud-Build/app/src/main/assets/index.html desktop-app/index.html
+
+      - name: Create Electron project
+        shell: pwsh
+        working-directory: desktop-app
+        run: |
+          @'
+          {
+            "name": "jii-detg-maker",
+            "version": "1.0.0",
+            "description": "JII: DETG MAKER",
+            "main": "main.js",
+            "scripts": {
+              "build": "electron-builder"
+            },
+            "build": {
+              "appId": "app.name.name.cool",
+              "productName": "JII DETG MAKER",
+              "directories": {
+                "output": "dist"
+              },
+              "files": [
+                "main.js",
+                "index.html"
+              ],
+              "win": {
+                "target": ["nsis", "portable"]
+              },
+              "artifactName": "${productName}-${version}-${arch}.${ext}"
+            }
+          }
+          '@ | Set-Content -Encoding utf8 package.json
+
+          @'
+          const { app, BrowserWindow, shell } = require("electron");
+          const path = require("path");
+
+          function createWindow() {
+            const win = new BrowserWindow({
+              width: 1280,
+              height: 800,
+              minWidth: 800,
+              minHeight: 600,
+              autoHideMenuBar: true,
+              webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                sandbox: true
+              }
+            });
+
+            win.loadFile(path.join(__dirname, "index.html"));
+
+            win.webContents.setWindowOpenHandler(({ url }) => {
+              if (url.startsWith("https://") || url.startsWith("http://")) {
+                shell.openExternal(url);
+              }
+              return { action: "deny" };
+            });
           }
 
-          android {
-              namespace 'app.name.name.cool'
-              compileSdk 35
+          app.whenReady().then(createWindow);
 
-              defaultConfig {
-                  applicationId 'app.name.name.cool'
-                  minSdk 29
-                  targetSdk 35
-                  versionCode 1
-                  versionName '1.0.0'
-              }
+          app.on("window-all-closed", () => {
+            if (process.platform !== "darwin") app.quit();
+          });
+          '@ | Set-Content -Encoding utf8 main.js
 
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
+      - name: Install Electron
+        working-directory: desktop-app
+        run: npm install --save-dev electron electron-builder
 
-              kotlinOptions {
-                  jvmTarget = '17'
-              }
-          }
-          EOF
+      - name: Build Windows EXE
+        working-directory: desktop-app
+        run: npx electron-builder --win nsis portable
 
-          sed -i 's/DETG – Criador de Poses/JII: DETG MAKER/' project/DETG-Android-Cloud-Build/app/src/main/AndroidManifest.xml
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-
-      - name: Build debug APK
-        working-directory: project/DETG-Android-Cloud-Build
-        run: gradle --no-daemon assembleDebug
-
-      - name: Upload APK
+      - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
         with:
-          name: JII-DETG-MAKER-APK
-          path: project/DETG-Android-Cloud-Build/app/build/outputs/apk/debug/app-debug.apk
+          name: JII-DETG-MAKER-WINDOWS
+          path: desktop-app/dist/*.exe
           if-no-files-found: error
