@@ -10,6 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Download project repository
         uses: actions/checkout@v4
@@ -17,7 +18,39 @@ jobs:
       - name: Unpack Android project
         run: |
           unzip -q detg-android-project.zip -d project
-          ls -la project
+
+      - name: Fix JVM compatibility and app name
+        run: |
+          cat > project/DETG-Android-Cloud-Build/app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+
+          android {
+              namespace 'app.name.name.cool'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'app.name.name.cool'
+                  minSdk 29
+                  targetSdk 35
+                  versionCode 1
+                  versionName '1.0.0'
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = '17'
+              }
+          }
+          EOF
+
+          sed -i 's/DETG – Criador de Poses/JII: DETG MAKER/' project/DETG-Android-Cloud-Build/app/src/main/AndroidManifest.xml
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -37,6 +70,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: DETG-Criador-de-Poses-APK
+          name: JII-DETG-MAKER-APK
           path: project/DETG-Android-Cloud-Build/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
