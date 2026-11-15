@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'JII-DETG-MAKER-NOVO.zip'
+      - 'detg-maker-android-new.zip'
       - '.github/workflows/build-apk.yml'
 
 permissions:
@@ -21,16 +21,16 @@ jobs:
 
       - name: Check ZIP
         run: |
-          if [ ! -f "JII-DETG-MAKER-NOVO.zip" ]; then
+          if [ ! -f "detg-maker-android-new.zip" ]; then
             echo "ERRO: ZIP não encontrado na raiz do repositório!"
             exit 1
           fi
-          ls -lh JII-DETG-MAKER-NOVO.zip
+          ls -lh detg-maker-android-new.zip
 
       - name: Unpack Android project
         run: |
           mkdir -p project
-          unzip -q JII-DETG-MAKER-NOVO.zip -d project
+          unzip -q detg-maker-android-new.zip -d project
 
           echo "Arquivos encontrados:"
           find project -maxdepth 4 -type f | head -100
