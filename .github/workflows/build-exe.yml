@@ -1,0 +1,37 @@
+name: Gerar .exe (Windows)
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Montar index.html
+        run: python build.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Compilar com Electron
+        working-directory: desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          Copy-Item ..\dist\index.html .\index.html
+          npm install
+          npx electron-builder --win portable --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DETG-Maker-exe
+          path: desktop/out/*.exe
+      - name: Anexar na Release (só em tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: desktop/out/*.exe

@@ -1,0 +1,6 @@
+dist/
+node_modules/
+desktop/out/
+desktop/index.html
+mobile/www/
+mobile/android/

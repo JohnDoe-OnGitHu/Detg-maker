@@ -1,0 +1,47 @@
+name: Gerar .apk (Android)
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Montar index.html
+        run: python3 build.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Preparar projeto Android (Capacitor)
+        working-directory: mobile
+        run: |
+          mkdir -p www
+          cp ../dist/index.html www/index.html
+          npm install
+          npx cap add android
+          # ícones do app (troca os padrões do Capacitor)
+          cp -r icons/. android/app/src/main/res/
+          rm -rf android/app/src/main/res/mipmap-anydpi-v26
+          # tela deitada (horizontal)
+          sed -i 's/<activity/<activity android:screenOrientation="sensorLandscape"/' android/app/src/main/AndroidManifest.xml
+      - name: Compilar APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Renomear
+        run: cp mobile/android/app/build/outputs/apk/debug/app-debug.apk DETG-Maker.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DETG-Maker-apk
+          path: DETG-Maker.apk
+      - name: Anexar na Release (só em tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: DETG-Maker.apk

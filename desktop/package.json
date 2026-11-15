@@ -1,0 +1,26 @@
+{
+  "name": "detg-maker",
+  "version": "1.0.0",
+  "description": "DETG Maker",
+  "main": "main.js",
+  "author": "JohnDoe-OnGitHu",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.johndoe.detgmaker",
+    "productName": "DETG Maker",
+    "files": [
+      "main.js",
+      "index.html"
+    ],
+    "directories": {
+      "output": "out"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "build/icon.ico"
+    }
+  }
+}
