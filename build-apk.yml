@@ -1,0 +1,63 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'JII-DETG-MAKER-NOVO.zip'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Download project repository
+        uses: actions/checkout@v7
+
+      - name: Check ZIP
+        run: |
+          if [ ! -f "JII-DETG-MAKER-NOVO.zip" ]; then
+            echo "ERRO: ZIP não encontrado na raiz do repositório!"
+            exit 1
+          fi
+          ls -lh JII-DETG-MAKER-NOVO.zip
+
+      - name: Unpack Android project
+        run: |
+          mkdir -p project
+          unzip -q JII-DETG-MAKER-NOVO.zip -d project
+
+          echo "Arquivos encontrados:"
+          find project -maxdepth 4 -type f | head -100
+
+          if [ ! -d "project/detg-android-project/DETG-Android-Cloud-Build" ]; then
+            echo "ERRO: Pasta DETG-Android-Cloud-Build não encontrada!"
+            exit 1
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK
+        working-directory: project/detg-android-project/DETG-Android-Cloud-Build
+        run: gradle --no-daemon --stacktrace assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: DETG-Criador-de-Poses-APK
+          path: project/detg-android-project/DETG-Android-Cloud-Build/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
